@@ -13,6 +13,8 @@ import os.path
 import matplotlib.backends.backend_pdf
 import threading
 import time
+from random import randint
+import datetime
 
 
 class CustomNavigationToolbar(NavigationToolbar2Tk):
@@ -20,14 +22,17 @@ class CustomNavigationToolbar(NavigationToolbar2Tk):
         super().__init__(canvas, parent)
         self.parent = parent
         self.patient_info = {
-            'Name': 'John Doe',
-            'Number': '12345',
-            'Address': '123 Main St, City',
-            'Age': '30',
-            'Email': 'john@example.com',
-            'Gender': 'Male',
-            'ID': 'P-6789',
-            'Birthday': '01/15/1993',
+            'Họ Tên bệnh nhân': 'Nguyễn Văn A',
+            'Ngày sinh': '01/01/1990',
+            'Giới tính': 'Nam',
+            'Địa chỉ': '123 Đường ABC, Quận XYZ',
+            'Số bệnh phẩm': '12345',
+            'Xét nghiệm gửi': 'Xét nghiệm máu',
+            'Điện thoại': '0123 456 789',
+            'Chẩn đoán': 'Chẩn đoán mẫu bình thường',
+            'Chất lượng mẫu': 'Mẫu đạt chất lượng',
+            'Bác sĩ chỉ định': 'Nguyễn Thị B',
+            'Thời gian xét nghiệm': '01/10/2023 09:30 AM'
         }
 
     # Create a function to generate the first page with patient information
@@ -35,18 +40,70 @@ class CustomNavigationToolbar(NavigationToolbar2Tk):
         fig, ax = plt.subplots(figsize=(8.27, 11.69))  # A4 page size in inches (portrait)
         ax.axis('off')  # Turn off axes
 
-        # Add patient information to the figure
-        info_text = "\n".join(f"{key}: {value}" for key, value in patient_info.items())
-        ax.text(0.1, 0.6, info_text, fontsize=14, verticalalignment='top')
+        # Create a title
+        ax.text(0.5, 0.95, 'PHIẾU KẾT QUẢ XÉT NGHIỆM', fontsize=16, fontweight='bold', ha='center', va='center')
+
+        # Split patient information into two columns
+        column1_info = {}
+        column2_info = {}
+        info_items = list(patient_info.items())
+        mid_index = len(info_items) // 2
+
+        for i, (key, value) in enumerate(info_items):
+            if i < mid_index:
+                column1_info[key] = value
+            else:
+                column2_info[key] = value
+
+        # Add patient information to the figure in two columns
+        y_position = 0.85
+        column_spacing = 0.4
+
+        for key, value in column1_info.items():
+            ax.text(0.0, y_position, f"{key}:", fontsize=12, fontweight='bold')
+            ax.text(0.3, y_position, value, fontsize=12)
+            y_position -= 0.05
+
+        y_position = 0.85
+        for key, value in column2_info.items():
+            ax.text(0.6, y_position, f"{key}:", fontsize=12, fontweight='bold')
+            ax.text(0.85, y_position, value, fontsize=12)
+            y_position -= 0.05
 
         return fig
 
-    def create_figure_from_data(self, data1, data2, left, right):
+    def create_figure_from_data(self, data1, data2):
 
-        export_fig = Figure()
+        fig1 = Figure(figsize=(8.27, 11.69))
+        fig1.tight_layout()
 
+        ax1 = fig1.add_subplot(211)
+        ax1.set_title("BIỂU ĐỒ ÁP LỰC")
+        ax1.set_xlabel("Time (s)")
+        ax1.set_ylabel("mmHg")
+        ax1.set_xlim(0, 100)
+        ax1.set_ylim(0, 100)
+        ax1.grid(linestyle='--')
 
-        pass
+        lines1 = ax1.plot(np.arange(0, len(data1) / 5, 0.2), data1, label="", linestyle='dashed')[0]
+        lines2 = ax1.plot(np.arange(0, len(data2) / 5, 0.2), data2, label="Áp lực đường ruột")[0]
+
+        ax1.legend()
+
+        ax2 = fig1.add_subplot(212)
+        ax2.set_title("BIỂU ĐỒ ÁP LỰC")
+        ax2.set_xlabel("Time (s)")
+        ax2.set_ylabel("mmHg")
+        ax2.set_xlim(0, 100)
+        ax2.set_ylim(0, 100)
+        ax2.grid(linestyle='--')
+
+        lines3 = ax2.plot(np.arange(0, len(data1) / 5, 0.2), data1, label="", linestyle='dashed')[0]
+        lines4 = ax2.plot(np.arange(0, len(data2) / 5, 0.2), data2, label="Áp lực đường ruột")[0]
+
+        ax2.legend()
+
+        return fig1, ax1, ax2
 
     def save_figure(self, *args):
         filetypes = {'pdf': 'Portable Document Format'}
@@ -86,21 +143,25 @@ class CustomNavigationToolbar(NavigationToolbar2Tk):
 
         pdf = matplotlib.backends.backend_pdf.PdfPages(fname)
         try:
+            data1 = self.parent.parent.data
+            data2 = self.parent.parent.data2
             leng = len(self.parent.parent.data)
-            line1 = self.parent.ax1
             # line2 = self.parent.ax2
             range_x = self.parent.parent.range_x
             number_pages = leng / range_x
             print(range_x)
             print(leng)
             page_number = 0
-            pdf.savefig(self.create_patient_info_page(self.patient_info))
-
+            pdf.savefig(self.create_patient_info_page(self.parent.parent.patient_info))
+            pgnum = 1
+            fig1, ax1, ax2 = self.create_figure_from_data(data1, data2)
             while page_number <= leng / 5:
-                line1.set_xlim(page_number, page_number + range_x)
-                self.canvas.draw()
-                pdf.savefig(self.canvas.figure)
+                ax1.set_xlim(page_number, page_number + range_x)
                 page_number = page_number + range_x
+                ax2.set_xlim(page_number, page_number + range_x)
+                pdf.savefig(fig1)
+                page_number = page_number + range_x
+                pgnum+=1
             pdf.close()
         except Exception as e:
             tk.messagebox.showerror("Error saving file", str(e))
@@ -138,6 +199,9 @@ class ToolbarFrame(ctk.CTkFrame):
         self.entry.insert(0, "Placeholder")
         self.about_button = ctk.CTkButton(self, text="About", command=self.parent.show_about, width=40)
         self.about_button.grid(row=0, column=6, padx=(20, 2), pady=20, sticky='e')
+
+        self.about_button = ctk.CTkButton(self, text="Patient Info", command=self.parent.patient_info, width=40)
+        self.about_button.grid(row=0, column=7, padx=(20, 2), pady=20, sticky='e')
 
     def update_options(self, options):
         self.combobox.configure(values=options)
@@ -193,7 +257,7 @@ class SerialMonitorApp(ctk.CTk):
         self.serial = None
         self.title("Serial Monitor")
         self.configure(background='#242a36')
-        self.geometry("900x700")
+        self.geometry("950x800")
         # self.iconbitmap('logo.ico')
         self.ports = []
         self.options = ['null']
@@ -215,6 +279,19 @@ class SerialMonitorApp(ctk.CTk):
 
         self.update_port_list_thread = threading.Thread(target=self.update_port_list, daemon=True)
         self.update_port_list_thread.start()
+        self.patient_info = {
+            'Họ Tên bệnh nhân': 'Nguyễn Văn A',
+            'Năm sinh': '01/01/1990',
+            'Giới tính': 'Nam',
+            'Địa chỉ': '123 Đường ABC, Quận XYZ',
+            'Số bệnh phẩm': '12345',
+            'Xét nghiệm gửi': 'Xét nghiệm máu',
+            'Điện thoại': '0123 456 789',
+            'Chẩn đoán': 'Chẩn đoán mẫu bình thường',
+            'Chất lượng mẫu': 'Mẫu đạt chất lượng',
+            'Bác sĩ chỉ định': 'Nguyễn Thị B',
+            'Thời gian xét nghiệm': datetime.datetime.now()
+        }
         # self.update_port_list()
         # self.plot_data()
 
@@ -245,6 +322,25 @@ class SerialMonitorApp(ctk.CTk):
                 self.serial.close()
                 self.stop_plot()
                 break
+        print("End getting")
+        self.stop_plot()
+
+    def plot_data_demo(self):
+        while self.cond:
+            try:
+                self.data = np.append(self.data, randint(0, 100))
+                self.data2 = np.append(self.data2, randint(0, 100))
+                self.figure_frame.update_plots(self.data, self.data2)
+            except sr.SerialTimeoutException as e:
+                messagebox.showwarning("Timeout", "Serial read timeout!")
+                self.stop_plot()
+                break
+            except Exception as e:
+                print(e)
+                self.serial.close()
+                self.stop_plot()
+                break
+            time.sleep(0.2)
         print("End getting")
         self.stop_plot()
 
@@ -286,6 +382,74 @@ class SerialMonitorApp(ctk.CTk):
         about_window.grab_set()
         about_window.transient(self)
         about_window.wait_window()
+
+    def patient_info(self):
+        def update_patient_info():
+            self.patient_info = {
+                'Họ Tên bệnh nhân': name_entry.get(),
+                'Năm sinh': birth_year_entry.get(),
+                'Giới tính': gender_var.get(),
+                'Địa chỉ': address_entry.get(),
+                'Số bệnh phẩm': '12345',
+                'Xét nghiệm gửi': 'Xét nghiệm máu',
+                'Điện thoại': birth_year_entry.get(),
+                'Chẩn đoán': 'Chẩn đoán mẫu bình thường',
+                'Chất lượng mẫu': 'Mẫu đạt chất lượng',
+                'Bác sĩ chỉ định': 'Nguyễn Thị B',
+                'Thời gian': datetime.datetime.now()
+            }
+            success_message = f"Form submitted successfully!"
+            messagebox.showinfo("Success", success_message)
+        patient_info_windows = ctk.CTkToplevel()
+        patient_info_windows.title("Patient Information Form")
+
+        # Create and place labels
+        name_label = ctk.CTkLabel(patient_info_windows,font=('calbiri', 12), text="Tên:")
+        name_label.grid(row=0, column=0, padx=10, pady=5, sticky='w')
+
+        birth_year_label = ctk.CTkLabel(patient_info_windows,font=('calbiri', 12), text="Năm sinh:")
+        birth_year_label.grid(row=1, column=0, padx=10, pady=5, sticky='w')
+
+        phone_number_label = ctk.CTkLabel(patient_info_windows,font=('calbiri', 12), text="Số điện thoại:")
+        phone_number_label.grid(row=2, column=0, padx=10, pady=5, sticky='w')
+
+        address_label = ctk.CTkLabel(patient_info_windows,font=('calbiri', 12), text="Địa chỉ:")
+        address_label.grid(row=3, column=0, padx=10, pady=5, sticky='w')
+
+        age_label = ctk.CTkLabel(patient_info_windows,font=('calbiri', 12), text="Tuổi:")
+        age_label.grid(row=4, column=0, padx=10, pady=5, sticky='w')
+
+        gender_label = ctk.CTkLabel(patient_info_windows,font=('calbiri', 12), text="Giới tính:")
+        gender_label.grid(row=5, column=0, padx=10, pady=5, sticky='w')
+
+        # Create and place entry fields
+        name_entry = ctk.CTkEntry(patient_info_windows)
+        name_entry.grid(row=0, column=1, padx=10, pady=5)
+
+        birth_year_entry = ctk.CTkEntry(patient_info_windows)
+        birth_year_entry.grid(row=1, column=1, padx=10, pady=5)
+
+        phone_number_entry = ctk.CTkEntry(patient_info_windows)
+        phone_number_entry.grid(row=2, column=1, padx=10, pady=5)
+
+        address_entry = ctk.CTkEntry(patient_info_windows)
+        address_entry.grid(row=3, column=1, padx=10, pady=5)
+
+        # Create and place a radio button for gender
+        gender_var = tk.StringVar()
+        male_radio = ctk.CTkRadioButton(patient_info_windows, text="Nam", variable=gender_var, value="Nam")
+        female_radio = ctk.CTkRadioButton(patient_info_windows, text="Nữ", variable=gender_var, value="Nữ")
+        male_radio.grid(row=5, column=1, padx=10, pady=5)
+        female_radio.grid(row=6, column=1, padx=10, pady=5)
+
+        # Create and place a submit button
+        submit_button = ctk.CTkButton(patient_info_windows, text="Submit", command=update_patient_info)
+        submit_button.grid(row=7, column=1, padx=10, pady=10, sticky='e')
+
+        patient_info_windows.focus_set()
+        patient_info_windows.grab_set()
+        patient_info_windows.transient(self)
+        patient_info_windows.wait_window()
 
     def update_port_list(self):
         while True:
